@@ -22,7 +22,9 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.Fragment
-import androidx.navigation.fragment.findNavController
+import androidx.lifecycle.Observer
+import androidx.lifecycle.ViewModelProvider
+import androidx.navigation.fragment.NavHostFragment.findNavController
 import androidx.navigation.fragment.navArgs
 import com.example.android.guesstheword.R
 import com.example.android.guesstheword.databinding.ScoreFragmentBinding
@@ -31,6 +33,9 @@ import com.example.android.guesstheword.databinding.ScoreFragmentBinding
  * Fragment where the final score is shown, after the game is over
  */
 class ScoreFragment : Fragment() {
+
+    private lateinit var viewModel: ScoreViewModel
+    private lateinit var viewModelFactory: ScoreViewModelFactory
 
     override fun onCreateView(
             inflater: LayoutInflater,
@@ -45,22 +50,30 @@ class ScoreFragment : Fragment() {
                 container,
                 false
         )
-
-        // TODO (04) Create and construct a ScoreViewModelFactory
-        // TODO (05) Create ScoreViewModel by using ViewModelProvider as usual, except also
-        // pass in your ScoreViewModelFactory
-
         // Get args using by navArgs property delegate
         val scoreFragmentArgs by navArgs<ScoreFragmentArgs>()
-        binding.scoreText.text = scoreFragmentArgs.score.toString()
-        binding.playAgainButton.setOnClickListener { onPlayAgain() }
+        // COMPLETED (04) Create and construct a ScoreViewModelFactory
+        viewModelFactory = ScoreViewModelFactory(scoreFragmentArgs.score)
+        // COMPLETED (05) Create ScoreViewModel by using ViewModelProvider as usual, except also
+        // pass in your ScoreViewModelFactory
+        viewModel = ViewModelProvider(this, viewModelFactory)
+                .get(ScoreViewModel::class.java)
+        // COMPLETED (07) Convert this class to properly observe and use ScoreViewModel
+        /** Setting up LiveData observation relationship **/
+        viewModel.score.observe(this, Observer { newScore ->
+            binding.scoreText.text = newScore.toString()
+        })
 
-        // TODO (07) Convert this class to properly observe and use ScoreViewModel
+        binding.playAgainButton.setOnClickListener { viewModel.onPlayAgain() }
+
+        viewModel.eventPlayAgain.observe(this, Observer { playAgain ->
+            if (playAgain){
+                val action = ScoreFragmentDirections.actionRestart()
+                findNavController(this).navigate(action)
+                viewModel.onPlayAgainComplete()
+            }
+        })
 
         return binding.root
-    }
-
-    private fun onPlayAgain() {
-        findNavController().navigate(ScoreFragmentDirections.actionRestart())
     }
 }
